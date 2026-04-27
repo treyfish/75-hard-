@@ -6,16 +6,21 @@ import {
   setSettings,
   type ExportPayload,
 } from '../lib/db';
+import { clearCloud } from '../lib/cloud';
+import { pushSettings } from '../lib/sync';
+import type { Session } from '../lib/cloud';
 import type { Settings } from '../types';
+import SignInPanel from './SignInPanel';
 
 interface Props {
   open: boolean;
   onClose: () => void;
   settings: Settings;
+  session: Session | null;
   onSettingsChange: (s: Settings | null) => void;
 }
 
-export default function SettingsSheet({ open, onClose, settings, onSettingsChange }: Props) {
+export default function SettingsSheet({ open, onClose, settings, session, onSettingsChange }: Props) {
   const [startDate, setStartDate] = useState(settings.startDate);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -33,6 +38,7 @@ export default function SettingsSheet({ open, onClose, settings, onSettingsChang
     try {
       const next: Settings = { ...settings, startDate };
       await setSettings(next);
+      pushSettings(next).catch(console.error);
       onSettingsChange(next);
       setMsg('Start date updated.');
     } finally {
@@ -80,10 +86,15 @@ export default function SettingsSheet({ open, onClose, settings, onSettingsChang
   }
 
   async function doReset() {
-    if (!confirm('Erase all checks, photos, and notes? This cannot be undone.')) return;
+    const cloudWarning = session
+      ? '\n\nThis will also delete all cloud-synced data for your account.'
+      : '';
+    if (!confirm(`Erase all checks, photos, and notes? This cannot be undone.${cloudWarning}`)) return;
     setBusy('reset');
     try {
       await clearAll();
+      if (session) await clearCloud(session.user.id).catch(console.error);
+      localStorage.removeItem('congrats-dismissed-v1');
       onSettingsChange(null);
     } finally {
       setBusy(null);
@@ -107,6 +118,8 @@ export default function SettingsSheet({ open, onClose, settings, onSettingsChang
         </div>
 
         <div className="px-5 py-5 space-y-6">
+          <SignInPanel session={session} />
+
           <section>
             <label className="label" htmlFor="settings-start">Start date</label>
             <div className="flex gap-2">

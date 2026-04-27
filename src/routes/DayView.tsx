@@ -17,11 +17,15 @@ import {
   todayISO,
 } from '../lib/progress';
 import { quoteForDay } from '../lib/quotes';
+import { queueDayUpload } from '../lib/sync';
 import type { DayRecord, Settings } from '../types';
 import { RULE_KEYS, TOTAL_DAYS } from '../types';
+import type { Session } from '../lib/cloud';
+import SyncIndicator from '../components/SyncIndicator';
 
 interface Props {
   settings: Settings;
+  session: Session | null;
   onSettingsChange: (s: Settings | null) => void;
 }
 
@@ -35,7 +39,7 @@ const EMPTY = (n: number): DayRecord => ({
   read: false,
 });
 
-export default function DayView({ settings, onSettingsChange }: Props) {
+export default function DayView({ settings, session, onSettingsChange }: Props) {
   const params = useParams();
   const navigate = useNavigate();
   const requested = Number(params.n);
@@ -81,6 +85,7 @@ export default function DayView({ settings, onSettingsChange }: Props) {
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => {
       saveDay(next).catch(console.error);
+      queueDayUpload(next);
     }, 250);
   }
 
@@ -89,6 +94,7 @@ export default function DayView({ settings, onSettingsChange }: Props) {
       window.clearTimeout(saveTimer.current);
       saveTimer.current = null;
       saveDay(day).catch(console.error);
+      queueDayUpload(day);
     }
     navigate('/');
   }
@@ -121,6 +127,7 @@ export default function DayView({ settings, onSettingsChange }: Props) {
         streak={streak(allDays, today)}
         onSettings={() => setSettingsOpen(true)}
         back={{ to: '/', label: 'Back to grid' }}
+        rightSlot={<SyncIndicator signedIn={!!session} />}
       />
 
       <main className="max-w-2xl mx-auto px-4 sm:px-6 pt-5 pad-safe-bottom space-y-5">
@@ -233,6 +240,7 @@ export default function DayView({ settings, onSettingsChange }: Props) {
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         settings={settings}
+        session={session}
         onSettingsChange={(s) => {
           onSettingsChange(s);
           if (s === null) navigate('/');

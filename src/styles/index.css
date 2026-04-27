@@ -61,3 +61,45 @@
 .pad-safe-top {
   padding-top: max(0.75rem, env(safe-area-inset-top));
 }
+
+/* Sage character animations */
+@keyframes sage-aura-pulse {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%      { opacity: 0.95; transform: scale(1.06); }
+}
+@keyframes sage-bump {
+  0%   { transform: translateY(0) scale(1); filter: drop-shadow(0 0 0 rgba(212,168,90,0)); }
+  35%  { transform: translateY(-6px) scale(1.06); filter: drop-shadow(0 0 24px rgba(212,168,90,0.7)); }
+  70%  { transform: translateY(-2px) scale(1.02); filter: drop-shadow(0 0 12px rgba(212,168,90,0.4)); }
+  100% { transform: translateY(0) scale(1); filter: drop-shadow(0 0 0 rgba(212,168,90,0)); }
+}
+.sage-bump {
+  animation: sage-bump 1.2s ease-out;
+}
+@keyframes level-up-toast {
+  0%   { opacity: 0; transform: translateY(8px) scale(0.95); }
+  20%  { opacity: 1; transform: translateY(-2px) scale(1.02); }
+  80%  { opacity: 1; transform: translateY(-12px) scale(1); }
+  100% { opacity: 0; transform: translateY(-22px) scale(1); }
+}
+.level-up-toast {
+  animation: level-up-toast 1.4s ease-out forwards;
+  text-shadow: 0 0 18px rgba(212, 168, 90, 0.55);
+}
+
+/* Congrats screen entrance */
+@keyframes congrats-pop {
+  0%   { opacity: 0; transform: scale(0.85); filter: blur(8px); }
+  60%  { opacity: 1; transform: scale(1.04); filter: blur(0); }
+  100% { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+.congrats-pop {
+  animation: congrats-pop 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes congrats-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.congrats-fade-in {
+  animation: congrats-fade-in 0.9s ease-out 0.6s both;
+}

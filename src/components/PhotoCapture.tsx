@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { compressImage } from '../lib/photos';
-import { deletePhoto, getPhoto, setPhoto } from '../lib/db';
+import { getPhoto, setPhoto } from '../lib/db';
+import { dropPhoto, pushPhoto } from '../lib/sync';
 
 interface Props {
   dayNumber: number;
@@ -57,6 +58,7 @@ export default function PhotoCapture({ dayNumber, onChange }: Props) {
       lastUrl.current = next;
       setUrl(next);
       onChange?.(true);
+      pushPhoto(dayNumber, blob).catch(console.error);
     } catch (err) {
       console.error(err);
       setError('Could not save photo. Try another image.');
@@ -68,7 +70,7 @@ export default function PhotoCapture({ dayNumber, onChange }: Props) {
   async function onRemove() {
     setBusy(true);
     try {
-      await deletePhoto(dayNumber);
+      await dropPhoto(dayNumber);
       revoke();
       setUrl(null);
       onChange?.(false);

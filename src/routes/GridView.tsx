@@ -2,7 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import TopBar from '../components/TopBar';
 import DayCell from '../components/DayCell';
+import Sage from '../components/Sage';
 import SettingsSheet from '../components/SettingsSheet';
+import SyncIndicator from '../components/SyncIndicator';
+import CongratsScreen from '../components/CongratsScreen';
 import { getAllDays, getAllPhotoKeys } from '../lib/db';
 import type { DayRecord, Settings } from '../types';
 import { TOTAL_DAYS } from '../types';
@@ -15,16 +18,22 @@ import {
   toISODate,
   todayISO,
 } from '../lib/progress';
+import { completedDays } from '../lib/sage';
+import type { Session } from '../lib/cloud';
 
 interface Props {
   settings: Settings;
+  session: Session | null;
   onSettingsChange: (s: Settings | null) => void;
 }
 
-export default function GridView({ settings, onSettingsChange }: Props) {
+const CONGRATS_DISMISSED_KEY = 'congrats-dismissed-v1';
+
+export default function GridView({ settings, session, onSettingsChange }: Props) {
   const [days, setDays] = useState<DayRecord[]>([]);
   const [photoSet, setPhotoSet] = useState<Set<number>>(new Set());
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [congratsOpen, setCongratsOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,8 +53,17 @@ export default function GridView({ settings, onSettingsChange }: Props) {
   const percent = percentComplete(days);
   const fire = streak(days, currentDay);
   const todayDate = formatFriendly(new Date());
+  const done = completedDays(days);
 
   const byNumber = useMemo(() => new Map(days.map((d) => [d.dayNumber, d])), [days]);
+
+  // Auto-show congrats once when 75/75 reached, unless user dismissed permanently
+  useEffect(() => {
+    if (done >= TOTAL_DAYS) {
+      const dismissed = localStorage.getItem(CONGRATS_DISMISSED_KEY) === '1';
+      if (!dismissed) setCongratsOpen(true);
+    }
+  }, [done]);
 
   return (
     <div className="min-h-dvh">
@@ -55,10 +73,11 @@ export default function GridView({ settings, onSettingsChange }: Props) {
         percent={percent}
         streak={fire}
         onSettings={() => setSettingsOpen(true)}
+        rightSlot={<SyncIndicator signedIn={!!session} />}
       />
 
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 pad-safe-bottom">
-        <section className="mb-6 flex items-end justify-between gap-3">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 pad-safe-bottom space-y-6">
+        <section className="flex items-end justify-between gap-3">
           <div>
             <div className="text-xs uppercase tracking-[0.2em] text-parchment/50">Today</div>
             <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">{todayDate}</h1>
@@ -73,6 +92,8 @@ export default function GridView({ settings, onSettingsChange }: Props) {
             </svg>
           </Link>
         </section>
+
+        <Sage completed={done} />
 
         <section>
           <div className="flex items-center justify-between mb-3">
@@ -100,13 +121,31 @@ export default function GridView({ settings, onSettingsChange }: Props) {
             })}
           </div>
         </section>
+
+        {done >= TOTAL_DAYS && (
+          <button className="btn-ghost w-full" onClick={() => setCongratsOpen(true)}>
+            Replay celebration
+          </button>
+        )}
       </main>
 
       <SettingsSheet
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         settings={settings}
+        session={session}
         onSettingsChange={onSettingsChange}
+      />
+
+      <CongratsScreen
+        open={congratsOpen}
+        onClose={() => {
+          setCongratsOpen(false);
+          localStorage.setItem(CONGRATS_DISMISSED_KEY, '1');
+        }}
+        days={days}
+        startDate={settings.startDate}
+        finishDate={today}
       />
     </div>
   );
