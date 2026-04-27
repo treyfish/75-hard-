@@ -128,6 +128,26 @@ export async function signInWithEmail(email: string): Promise<{ error?: string }
   return error ? { error: error.message } : {};
 }
 
+export async function signInWithPassword(
+  email: string,
+  password: string,
+): Promise<{ error?: string }> {
+  if (!client) return { error: 'Cloud sync is not configured.' };
+  const { error } = await client.auth.signInWithPassword({ email, password });
+  return error ? { error: error.message } : {};
+}
+
+export async function signUpWithPassword(
+  email: string,
+  password: string,
+): Promise<{ error?: string; needsConfirmation?: boolean }> {
+  if (!client) return { error: 'Cloud sync is not configured.' };
+  const { data, error } = await client.auth.signUp({ email, password });
+  if (error) return { error: error.message };
+  if (!data.session) return { needsConfirmation: true };
+  return {};
+}
+
 export async function signOut(): Promise<void> {
   if (!client) return;
   await client.auth.signOut();
