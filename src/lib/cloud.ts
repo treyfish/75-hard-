@@ -2,12 +2,36 @@ import { createClient, type Session, type SupabaseClient } from '@supabase/supab
 import type { DayRecord, ISODate, Settings } from '../types';
 import { TOTAL_DAYS } from '../types';
 
-const URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const RT_URL_KEY = '75hard.supabase.url';
+const RT_KEY_KEY = '75hard.supabase.anonKey';
+
+function readRuntimeConfig(): { url: string; key: string } | null {
+  try {
+    const url = (localStorage.getItem(RT_URL_KEY) ?? '').trim();
+    const key = (localStorage.getItem(RT_KEY_KEY) ?? '').trim();
+    if (url && key) return { url, key };
+  } catch {
+    // localStorage unavailable (private mode? shouldn't happen here)
+  }
+  return null;
+}
+
+const ENV_URL = ((import.meta.env.VITE_SUPABASE_URL ?? '') as string).trim();
+const ENV_KEY = ((import.meta.env.VITE_SUPABASE_ANON_KEY ?? '') as string).trim();
+const envConfig = ENV_URL && ENV_KEY ? { url: ENV_URL, key: ENV_KEY } : null;
+const runtimeConfig = envConfig ? null : readRuntimeConfig();
+const activeConfig = envConfig ?? runtimeConfig;
+
+export type CloudSource = 'env' | 'runtime' | 'none';
+export const cloudSource: CloudSource = envConfig
+  ? 'env'
+  : runtimeConfig
+    ? 'runtime'
+    : 'none';
 
 let client: SupabaseClient | null = null;
-if (URL && KEY) {
-  client = createClient(URL, KEY, {
+if (activeConfig) {
+  client = createClient(activeConfig.url, activeConfig.key, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
@@ -17,6 +41,16 @@ if (URL && KEY) {
 }
 
 export const cloudConfigured = !!client;
+
+export function saveRuntimeCloudConfig(url: string, key: string): void {
+  localStorage.setItem(RT_URL_KEY, url.trim());
+  localStorage.setItem(RT_KEY_KEY, key.trim());
+}
+
+export function clearRuntimeCloudConfig(): void {
+  localStorage.removeItem(RT_URL_KEY);
+  localStorage.removeItem(RT_KEY_KEY);
+}
 
 interface DayRow {
   user_id: string;
