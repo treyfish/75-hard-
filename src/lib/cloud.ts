@@ -90,7 +90,7 @@ function rowToDay(r: DayRow): DayRecord {
   };
 }
 
-function dayToRow(userId: string, d: DayRecord, photoPath: string | null = null): Omit<DayRow, 'updated_at'> {
+function dayToRow(userId: string, d: DayRecord): Omit<DayRow, 'updated_at' | 'photo_path'> {
   return {
     user_id: userId,
     day_number: d.dayNumber,
@@ -103,7 +103,6 @@ function dayToRow(userId: string, d: DayRecord, photoPath: string | null = null)
     workout_notes: d.workoutNotes ?? null,
     feelings_notes: d.feelingsNotes ?? null,
     completed_at: d.completedAt ? new Date(d.completedAt).toISOString() : null,
-    photo_path: photoPath,
   };
 }
 
@@ -200,25 +199,28 @@ export async function downloadPhoto(path: string): Promise<Blob | null> {
 export async function uploadPhoto(userId: string, dayNumber: number, blob: Blob): Promise<string> {
   if (!client) throw new Error('Cloud sync is not configured.');
   const path = `${userId}/${dayNumber}.jpg`;
-  const { error } = await client.storage.from('photos').upload(path, blob, {
+  const { error: storageError } = await client.storage.from('photos').upload(path, blob, {
     cacheControl: '3600',
     upsert: true,
     contentType: blob.type || 'image/jpeg',
   });
-  if (error) throw error;
-  await client
+  if (storageError) throw storageError;
+  const { error: rowError } = await client
     .from('days')
     .upsert({ user_id: userId, day_number: dayNumber, photo_path: path }, { onConflict: 'user_id,day_number' });
+  if (rowError) throw rowError;
   return path;
 }
 
 export async function deletePhotoCloud(userId: string, dayNumber: number): Promise<void> {
   if (!client) return;
   const path = `${userId}/${dayNumber}.jpg`;
-  await client.storage.from('photos').remove([path]);
-  await client
+  const { error: storageError } = await client.storage.from('photos').remove([path]);
+  if (storageError) console.warn('photo storage delete failed', storageError);
+  const { error: rowError } = await client
     .from('days')
     .upsert({ user_id: userId, day_number: dayNumber, photo_path: null }, { onConflict: 'user_id,day_number' });
+  if (rowError) throw rowError;
 }
 
 export async function upsertDay(userId: string, day: DayRecord): Promise<void> {
