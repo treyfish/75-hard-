@@ -61,7 +61,8 @@ export default function PhotoCapture({ dayNumber, onChange }: Props) {
       pushPhoto(dayNumber, blob).catch(console.error);
     } catch (err) {
       console.error(err);
-      setError('Could not save photo. Try another image.');
+      const detail = err instanceof Error ? err.message : 'Unknown error';
+      setError(`Could not save photo: ${detail}`);
     } finally {
       setBusy(false);
     }
@@ -85,7 +86,6 @@ export default function PhotoCapture({ dayNumber, onChange }: Props) {
         ref={inputRef}
         type="file"
         accept="image/*"
-        capture="environment"
         className="sr-only"
         onChange={onPick}
       />
@@ -136,7 +136,7 @@ export default function PhotoCapture({ dayNumber, onChange }: Props) {
             <circle cx="12" cy="13" r="4" />
           </svg>
           <span className="font-medium">{busy ? 'Saving…' : 'Add progress photo'}</span>
-          <span className="text-xs text-parchment/45">Tap to use camera or pick a file</span>
+          <span className="text-xs text-parchment/45">Take a new photo or choose from your library</span>
         </button>
       )}
 
